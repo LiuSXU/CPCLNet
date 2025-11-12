@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from efficientnet_pytorch import EfficientNet
 
-# 导入三大模块
+
 from modules.CMDA import *
 from modules.RAMP import *
 from modules.CRPD import *
@@ -18,25 +18,22 @@ class CPCLNet(nn.Module):
     def __init__(self, num_fg_desc=102, num_bg_desc=102, feature_dim=1280):
         super(CPCLNet, self).__init__()
 
-        # 1.特征提取器
         self.encoder = EfficientNet.from_pretrained('efficientnet-b0')
         self.feature_dim = feature_dim
 
-        # 验证维度
         dummy = torch.randn(1, 3, 256, 256)
         with torch.no_grad():
             out_dim = self.encoder.extract_features(dummy).shape[1]
         assert out_dim == feature_dim, f"Expected {feature_dim}, got {out_dim}"
 
-        # 2.三大模块
         self.crpd = CRPDModule(num_fg_desc, num_bg_desc, feature_dim)
         self.rwkv_affinity = RWKVAffinityModule(feature_dim=feature_dim, num_heads=8)
         self.aligner = DynamicAlignmentModule(feature_dim=feature_dim, proj_dim=256)
 
-        # 3.边界原型生成
+
         self.register_buffer('kernel', torch.ones(3, 3))
 
-        # 4.解码器（前景 + 背景）
+
         max_fg = num_fg_desc + 2  # + proto + boundary
         max_bg = num_bg_desc + 2
 
@@ -62,11 +59,10 @@ class CPCLNet(nn.Module):
         self.decoder_fg = make_decoder(max_fg + 2)
         self.decoder_bg = make_decoder(max_bg + 2)
 
-        # 注意力机制
+
         self.attn_fg = nn.Sequential(nn.Conv2d(256, 1, 1), nn.Sigmoid())
         self.attn_bg = nn.Sequential(nn.Conv2d(256, 1, 1), nn.Sigmoid())
 
-        # 最终融合
         self.fusion = nn.Conv2d(2, 2, 3, padding=1)
 
         self._init_weights()
@@ -103,16 +99,15 @@ class CPCLNet(nn.Module):
         device = support_img.device
         B = support_img.shape[0]
 
-        # 特征提取
+  
         s_feat = self.encoder.extract_features(support_img)  # [B, D, H, W]
         q_feat = self.encoder.extract_features(query_img)
 
-        # 动态对齐模块
         s_proj, q_proj, align_loss = self.aligner(s_feat, q_feat)
-        # 使用对齐后的特征
+
         s_feat, q_feat = s_proj, q_proj
 
-        # 边界原型
+
         inner_boundary, outer_boundary = self.get_boundary(support_mask)
         inner_boundary = F.interpolate(inner_boundary, size=q_feat.shape[2:], mode='bilinear', align_corners=True)
         outer_boundary = F.interpolate(outer_boundary, size=q_feat.shape[2:], mode='bilinear', align_corners=True)
@@ -120,14 +115,12 @@ class CPCLNet(nn.Module):
         ib_proto = self.map_pooling(s_feat, inner_boundary)
         ob_proto = self.map_pooling(s_feat, outer_boundary)
 
-        # 聚类原型生成
+
         fg_desc, bg_desc = self.crpd(s_feat, support_mask)  # [K, D]
 
-        # 全局平均原型
         fg_proto = self.map_pooling(s_feat, support_mask)
         bg_proto = self.map_pooling(s_feat, 1 - support_mask)
 
-        # 拼接：聚类原型 + 全局原型 + 边界原型
         fg_desc = torch.cat([fg_desc, fg_proto, ib_proto], dim=0)
         bg_desc = torch.cat([bg_desc, bg_proto, ob_proto], dim=0)
 
@@ -135,7 +128,7 @@ class CPCLNet(nn.Module):
         fg_affinity = self.rwkv_affinity(fg_desc, q_feat)  # [K_fg, D]
         bg_affinity = self.rwkv_affinity(bg_desc, q_feat)
 
-        # 亲和力图生成
+ 
         H, W = q_feat.shape[2:]
         q_flat = q_feat.flatten(2)  # [B, D, HW]
 
@@ -145,7 +138,7 @@ class CPCLNet(nn.Module):
         fg_map = fg_map.permute(1, 0, 2, 3)  # [B, K_fg, H, W]
         bg_map = bg_map.permute(1, 0, 2, 3)
 
-        # 拼接边界
+
         fg_input = torch.cat([fg_map, inner_boundary, outer_boundary], dim=1)
         bg_input = torch.cat([bg_map, inner_boundary, outer_boundary], dim=1)
 
@@ -164,8 +157,9 @@ class CPCLNet(nn.Module):
             x = layer(x)
         bg_pred = x
 
-        # 融合
+    
         pred = torch.cat([bg_pred, fg_pred], dim=1)
         pred = self.fusion(pred)
+
 
         return pred, fg_desc, bg_desc, q_feat, s_feat, align_loss
