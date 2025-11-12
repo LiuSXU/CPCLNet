@@ -11,19 +11,19 @@ import numpy as np
 from scipy.ndimage import binary_dilation, binary_erosion
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-# ------------------------------------------------
+
 
 import sys
 sys.path.append(PROJECT_ROOT)
 
-# 导入配置、数据、模型
+
 from config import DEVICE, IMAGE_SIZE, NUM_FG_DESCRIPTORS, NUM_BG_DESCRIPTORS, FEATURE_DIM
 from config import NUM_EPOCHS, ITERATIONS_PER_EPOCH, DECAY_RATE, LOSS_WEIGHTS
 from config import MODEL_DIR, VIS_DIR, OUTPUT_DIR
 from dataset import get_episode_loader
 from model import CPCLNet
 
-# 辅助函数
+
 def calculate_dice(pred, target):
     """Dice = 2 * |P∩G| / (|P| + |G|)"""
     pred = torch.sigmoid(pred)
@@ -33,15 +33,14 @@ def calculate_dice(pred, target):
     return (2. * inter) / (union + 1e-8) if union > 0 else 0.0
 
 def intra_inter_loss(fg_desc, bg_desc):
-    """类内紧凑 + 类间分离"""
-    # 类内
+
     mean_fg = fg_desc.mean(dim=0, keepdim=True)
     mean_bg = bg_desc.mean(dim=0, keepdim=True)
     intra_fg = F.mse_loss(fg_desc, mean_fg.expand_as(fg_desc))
     intra_bg = F.mse_loss(bg_desc, mean_bg.expand_as(bg_desc))
     loss_intra = (intra_fg + intra_bg) / 2.0
 
-    # 类间
+   
     cos = F.cosine_similarity(mean_fg, mean_bg, dim=1)
     loss_inter = 1.0 + cos.squeeze()
     return loss_intra, loss_inter
@@ -55,7 +54,7 @@ def train():
     device = DEVICE
     model = CPCLNet(NUM_FG_DESCRIPTORS, NUM_BG_DESCRIPTORS, FEATURE_DIM).to(device)
 
-    # ------------------- 加载已有最佳模型 -------------------
+
     best_pth = os.path.join(MODEL_DIR, "best_model.pth")
     if os.path.exists(best_pth):
         model.load_state_dict(torch.load(best_pth, map_location=device))
@@ -69,7 +68,7 @@ def train():
     best_dice = 0.0
     history = {"iter": [], "loss": [], "dice": []}
 
-    # ------------------- 训练循环 -------------------
+
     for epoch in range(1, NUM_EPOCHS + 1):
         model.train()
         epoch_dices = []
@@ -116,7 +115,7 @@ def train():
             dice = calculate_dice(pred[:, 1:2], query_masks)
             epoch_dices.append(dice)
 
-            # ---- 记录 ----
+    
             history["iter"].append(len(history["iter"]) + 1)
             history["loss"].append(loss.item())
             history["dice"].append(dice)
@@ -125,18 +124,18 @@ def train():
 
         scheduler.step()
 
-        # ---- Epoch 统计（过滤掉过低的 Dice）----
+
         valid = [d for d in epoch_dices if d >= 0.5]
         epoch_dice = sum(valid) / len(valid) if valid else 0.0
         print(f"\n>>> Epoch {epoch}  Avg Dice (≥0.5): {epoch_dice:.4f}")
 
-        # ---- 保存最佳模型 ----
+
         if epoch_dice > best_dice:
             best_dice = epoch_dice
             torch.save(model.state_dict(), best_pth)
             print(f"    [Best] Saved model with Dice {best_dice:.4f}")
 
-        # ---- 可视化（每 epoch 一次）----
+ 
         model.eval()
         with torch.no_grad():
             s_img, s_mask, q_img, q_mask = get_episode_loader()
@@ -147,13 +146,13 @@ def train():
 
             pred_mask = torch.sigmoid(pred_v[:, 1, :, :]).cpu().numpy()[0]
 
-            # 反归一化
+   
             mean = torch.tensor([0.485, 0.456, 0.406], device=device).view(3,1,1)
             std  = torch.tensor([0.229, 0.224, 0.225], device=device).view(3,1,1)
             q_vis = (q_img * std + mean).clamp(0,1).cpu().numpy()[0]
             q_vis = q_vis.transpose(1,2,0)
 
-            # GT 平滑
+
             gt = q_mask.cpu().numpy()[0,0]
             gt_smooth = binary_dilation(gt, iterations=1)
             gt_smooth = binary_erosion(gt_smooth, iterations=1)
@@ -168,12 +167,12 @@ def train():
 
         model.train()
 
-    # ------------------- 训练结束后保存 CSV -------------------
+
     df = pd.DataFrame(history)
     csv_path = os.path.join(OUTPUT_DIR, "training_log.csv")
     df.to_csv(csv_path, index=False)
     print(f"\nTraining finished. Log saved to {csv_path}")
 
-# ------------------------------------------------
 if __name__ == "__main__":
+
     train()
