@@ -41,7 +41,7 @@ def crf_post_process(image, pred_mask, gt_mask_shape):
     d.addPairwiseGaussian(sxy=3, compat=3)
     d.addPairwiseBilateral(sxy=80, srgb=13, rgbim=image, compat=10)
 
-    Q = d.inference(10)  # 增加推理步数到 10
+    Q = d.inference(10)  
     map = np.argmax(Q, axis=0).reshape(gt_mask_shape[-2:])
 
     return torch.from_numpy(map).float().to(config.DEVICE)
@@ -131,4 +131,5 @@ def evaluate():
 
 
 if __name__ == "__main__":
+
     evaluate()
