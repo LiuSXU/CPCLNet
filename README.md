@@ -3,7 +3,7 @@
 This repository contains the official implementation of CPCLNet, as presented in the paper “*Advancing Cross-Modal Few-Shot Medical Image Segmentation with Clustering-Inspired Prototype Consistency Learning.*”
 CPCLNet introduces a novel framework for cross-modal few-shot medical image segmentation, designed to address challenges of data scarcity and domain discrepancy among different imaging modalities such as CT, MRI, and PET. By incorporating clustering-guided prototype learning and cross-modal consistency optimization, CPCLNet achieves robust segmentation performance and enhanced generalization across unseen modalities.
 
-<img width="1077" height="614" alt="image" src="https://github.com/user-attachments/assets/767bde72-3d0e-4a1d-95e0-cfca236d0a5f" />
+<img width="3685" height="1488" alt="CPCLNet" src="https://github.com/user-attachments/assets/d5f25cfb-44c3-4109-8035-4c9860a5a01a" />
 
 ## 🗄️ Introduction
  CPCLNet introduces three key modules to enhance cross-modal few-shot medical image segmentation:
