@@ -10,10 +10,12 @@ CPCLNet introduces a novel framework for cross-modal few-shot medical image segm
 
 
 ## 🗄️ Introduction
- CPCLNet introduces three key modules to enhance cross-modal few-shot medical image segmentation:
- - **Cross-Modal Dynamic Alignment (CMDA) Module** : Projects support and query features into a unified latent space and adaptively aligns them through weighted regularization, enabling precise segmentation under distribution shifts.
-- **Clustering-inspired Representative Prototype Descriptor (CRPD) Module**: Enforces consistency between prototypes across different modalities, improving prototype stability and cross-modal generalization.
-- **RWKV-based Affinity Map Prediction (RAMP) Module** : Generates robust and discriminative prototypes by clustering foreground and background features to better capture intra-class diversity.
+ CPCLNet introduces four key modules to enhance cross-modal few-shot medical image segmentation:
+- **Parameter-sharing Feature Encoder (PFE)** extracts modality-consistent representations from both support and query images using shared backbone parameters, projecting them into a unified feature space that encodes boundary, shape, and structural cues.
+ - **Cross-Modal Dynamic Alignment (CMDA) Module** aligns support and query features within a shared latent space through adaptive feature interaction, reducing modality discrepancies and improving feature correspondence under distribution shifts.
+- **Clustering-inspired Representative Prototype Descriptor (CRPD) Module** constructs robust foreground and background prototypes via clustering-guided feature aggregation, ensuring stable and discriminative prototype representations across modalities.
+- **RWKV-based Affinity Map Prediction (RAMP) Module** refines query features using hierarchical channel and spatial mixing operations and predicts affinity-aware representations to generate accurate foreground and background prototypes.
+  
 Together, these components allow CPCLNet to achieve robust, generalizable, and modality-consistent segmentation performance under limited supervision.
 
 ## 🗃️ Requirements
