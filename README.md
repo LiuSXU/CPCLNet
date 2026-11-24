@@ -6,7 +6,7 @@ CPCLNet introduces a novel framework for cross-modal few-shot medical image segm
 
 <img width="4478" height="1587" alt="CPCLNet-v3" src="https://github.com/user-attachments/assets/4ce98557-5c83-48c9-8941-7b00b5d775f9" />
 
-
+## The source code will be made publicly available upon completion of the code organization.
 
 
 ## 🗄️ Introduction
